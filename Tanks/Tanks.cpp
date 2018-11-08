@@ -1,25 +1,37 @@
 #include "Tanks.h"
 #include <E:\2\SFML-2.5.0\include\SFML\Graphics.hpp>
 #include <stdexcept>
+#include <ctime>
+#include <cstdlib>
 #include <cmath>
 using namespace std;
 
 const float PI = 3.14159265;
+int Tank:: numberOfTanks = 0;
 
-
-Bullet::Bullet(float i_, float j_, float angle_):c(4),i(i_), j(j_), angle(angle_) {
+Bullet::Bullet(float i_, float j_, float angle_, int id_):c(5),i(i_), j(j_), angle(angle_), id(id_) {
 	c.setFillColor(sf::Color::Black);
-	c.setOrigin(4, 4);
+	c.setOrigin(5, 5);
 	c.setPosition(i, j);
 }
 
-void Bullet::draw() {
-	window.draw(c);
-	i +=3*cos(PI*angle/ 180.);
-	j += 3 * sin(PI*angle/ 180.);
-	if (i >= 500 || j>=500)
+//post: throws exception if bullet is outside the screen
+void Bullet::setPos() {
+	i += 2 * cos(PI*angle / 180.);
+	j += 2 * sin(PI*angle / 180.);
+	if (i >= 500 || j >= 500 || i <= 0 || j <= 0)
 		throw exception();
 	c.setPosition(i, j);
+}
+
+//post: throws exception if bullet is outside the screen
+void Bullet::draw() {
+	window.draw(c);
+	setPos();
+}
+
+int Bullet::getId() const{
+	return id;
 }
 
 float Bullet::getI() {
@@ -30,44 +42,53 @@ float Bullet::getJ() {
 	return j;
 }
 
-sf::FloatRect Bullet::getGlobalBounds() {
+sf::FloatRect Bullet::getGlobalBounds() const{
 	return c.getGlobalBounds();
 }
 
-Tank::Tank(sf::Color tColor) {
-	//coordinates
-	i = rand() % 500;
-	j = rand() % 500;
-	//ellipse
-	r.setRadius(11.f);
-	r.setOrigin(11, 11);
-	r.setScale(2, 1);
-	//convex
-	convex.setPointCount(3);
-	convex.setPoint(0, sf::Vector2f(0, 0));
-	convex.setPoint(1, sf::Vector2f(0, 12));
-	convex.setPoint(2, sf::Vector2f(36, 0));
-	convex.setOrigin(0, 6);
 
+void Tank::display() {
+	i = 100+300*(id-1); j=320;
+	r.setPosition(i, j); convex.setPosition(i, j);
+	r.setScale(3.4, 2); convex.setScale(2, 2);
+}
+
+void Tank::random() {
+	srand(time(NULL)+id*30282);
+	i = rand()%500; j =rand()%500;
+	r.setPosition(i, j); convex.setPosition(i, j);
+	r.setScale(1.7, 1); convex.setScale(1, 1);
+}
+
+Tank::Tank(sf::Color tColor_):id(++numberOfTanks), tColor(tColor_){
+	//ellipse
+	r.setRadius(17.f);
+	r.setOrigin(17, 17);
+	r.setScale(1.7, 1.);
+	//convex
+	convex.setPointCount(4);
+	convex.setPoint(0, sf::Vector2f(0, 7));
+	convex.setPoint(1, sf::Vector2f(40, 0));
+	convex.setPoint(2, sf::Vector2f(40, 20));
+	convex.setPoint(3, sf::Vector2f(0, 13));
+	convex.setOrigin(0, 10);
 	//texture for tank
-	texture->loadFromFile("E:\\2\\SFML_first_Project\\tankTexture.jpg");
-	r.setTexture(texture);
-	//fill
-	convex.setFillColor(tColor);
+	textureTank->loadFromFile("E:\\2\\SFML_first_Project\\tankTexture.jpg");
+	r.setTexture(textureTank); 
+	//texture for tank
+	textureCannon->loadFromFile("E:\\2\\SFML_first_Project\\cannonTexture.jpg");
+	convex.setTexture(textureCannon);
+	//colors
 	r.setFillColor(tColor);
-	//outline
-	r.setOutlineThickness(0.9);
-	r.setOutlineColor(sf::Color(0, 0, 0));
-	convex.setOutlineThickness(0.9);
-	convex.setOutlineColor(sf::Color(0, 0, 0));
-	//setPositions
-	r.setPosition(i, j); 
-	convex.setPosition(i, j);
+	convex.setOutlineColor(sf::Color::Black);
+	convex.setOutlineThickness(1.2);
+	convex.setFillColor(sf::Color(205, 205, 0, 230)); 
+	rotate(180 * (id + 1));
 }
 
 void Tank::setPos(float dist) {
-	float i_ = dist*cos(2 * PI*(r.getRotation()) / 360.);
-	float j_ = dist*sin(2 * PI*(r.getRotation()) / 360.);
+	float i_ = dist*cos(PI*(convex.getRotation()) / 180.);
+	float j_ = dist*sin(PI*(convex.getRotation()) / 180.);
 	if (i+i_<=500 && i+i_>=0)
 		i = i + i_;
 	if (j + j_ <= 500 && j + j_ >= 0)
@@ -77,7 +98,6 @@ void Tank::setPos(float dist) {
 }
 
 void Tank::rotate(float x) {
-	r.rotate(x);
 	convex.rotate(x);
 }
 
@@ -87,98 +107,130 @@ void Tank::draw() {
 }
 
 float Tank::getI() {
-	return i+29*cos(PI*r.getRotation()/ 180.)+6*sin(PI*r.getRotation()/180.);
+	return i+40*cos(PI*convex.getRotation()/ 180.)+0*sin(PI*convex.getRotation()/180.);
 }
 
 float Tank::getJ() {
-	return j+29*sin(PI*r.getRotation()/ 180.)-6*cos(PI*r.getRotation()/180.);
+	return j+40*sin(PI*convex.getRotation()/ 180.)-0*cos(PI*convex.getRotation()/180.);
 }
 
 float Tank::getAngle() {
-	return r.getRotation();
+	return convex.getRotation();
 }
 
-bool Tank::checkCollision(Bullet* b) {
-	if (!b)
+int Tank::getId() const{
+	return id;
+}
+
+bool Tank::checkCollision(const Bullet& b) const{
+	if (id == b.getId())
 		return true;
-	if (r.getGlobalBounds().intersects(b->getGlobalBounds()))
-		return false;
-	if (convex.getGlobalBounds().intersects(b->getGlobalBounds()))
+	if (r.getGlobalBounds().intersects(b.getGlobalBounds())
+		|| convex.getGlobalBounds().intersects(b.getGlobalBounds()))
 		return false;
 	return true;
 }
 
-
 Game::Game(sf::Color c1, sf::Color c2) :t1(c1), t2(c2) {
-	endMessage.setString("Game Over!");
-	endMessage.setFillColor(sf::Color(0, 235, 180));
-	endMessage.setOutlineColor(sf::Color(190, 150, 0));
+	endMessage.setOutlineColor(sf::Color(0, 0, 0));
 	endMessage.setOutlineThickness(6);
-	endMessage.setPosition(50, 150);
 }
 
-bool Game::checkConditions() {
-	return t1.checkCollision(t2.myBullet) && t2.checkCollision(t1.myBullet);
+
+bool myCheck(const Tank& t, const vector<Bullet>& bullets) {
+	for (int i = 0; i < bullets.size(); i++) {
+		if (!t.checkCollision(bullets.at(i)))
+			return false;
+	}
+	return true;
 }
 
-void Game:: run() {
+void Game::checkConditions() {
+	if (!myCheck(t1, bullets)) {
+		endMessage.setString(" 2nd\nplayer\n Won");
+		endMessage.setFillColor(t2.tColor);
+		state=2;
+	}
+	if (!myCheck(t2, bullets)) {
+		endMessage.setString(" 1st\nplayer\n Won");
+		endMessage.setFillColor(t1.tColor);
+		state=2;
+	}
+}
+
+void Game::run() {
 	window.create(sf::VideoMode(500, 500), "Enjoy the Tanks!");
 	sf::Font f;
 	if (!f.loadFromFile("E:\\2\\SFML_first_Project\\carbontype.ttf")) {}
 	endMessage.setCharacterSize(54);
 	endMessage.setFont(f);
-	while (window.isOpen()){
-		sf::Event event;
-		while (window.pollEvent(event)){
-			if (event.type == sf::Event::Closed)
-				window.close();
-
-			//for First Tank
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
-				t1.rotate(-15);
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
-				t1.rotate(15);
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
-				t1.setPos(10);
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down))
-				t1.setPos(-10);
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::M))
-				t1.myBullet = new Bullet(t1.getI(), t1.getJ(), t1.getAngle());
-
-			//for Second Tank
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
-				t2.rotate(-15);
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::F))
-				t2.rotate(15);
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::E))
-				t2.setPos(10);
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
-				t2.setPos(-10);
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Q))
-				t2.myBullet=new Bullet(t2.getI(), t2.getJ(), t2.getAngle());
-		}
-
-		window.clear(sf::Color(240,240,240));
-
-		if (checkConditions()) {
+	sf::Event event;
+	while (window.isOpen()) {
+		window.clear(sf::Color(255, 255, 255));
+		switch (state) {
+		case 0:
+			t1.display(); t2.display();
 			t1.draw(); t2.draw();
-			if (t1.myBullet) {
-				try { t1.myBullet->draw(); }
-				catch (exception) { t1.myBullet = nullptr; }
+			endMessage.setFillColor(t1.tColor);
+			endMessage.setString(" 1st\nplayer");
+			endMessage.setPosition(10, 100);
+			window.draw(endMessage);
+			endMessage.setFillColor(t2.tColor);
+			endMessage.setString(" 2nd\nplayer");
+			endMessage.setPosition(250, 100);
+			window.draw(endMessage);
+			while (window.pollEvent(event)) {
+				if (event.type == sf::Event::KeyPressed)
+				{state = 1; t1.random(); t2.random();}
+				if (event.type == sf::Event::Closed)
+					window.close();
 			}
-			if (t2.myBullet) {
-				try { t2.myBullet->draw(); }
-				catch (exception) { t2.myBullet = nullptr; }
+			break;
+		case 1:
+			while (window.pollEvent(event)) {
+				if (event.type == sf::Event::Closed)
+					window.close();
+
+				//for First Tank
+				if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
+					t1.rotate(-10);
+				if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
+					t1.rotate(10);
+				if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
+					t1.setPos(7);
+				if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down))
+					t1.setPos(-7);
+				if (sf::Keyboard::isKeyPressed(sf::Keyboard::M))
+					bullets.push_back(Bullet(t1.getI(), t1.getJ(), t1.getAngle(), t1.getId()));
+
+				//for Second Tank
+				if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
+					t2.rotate(-10);
+				if (sf::Keyboard::isKeyPressed(sf::Keyboard::F))
+					t2.rotate(10);
+				if (sf::Keyboard::isKeyPressed(sf::Keyboard::E))
+					t2.setPos(7);
+				if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
+					t2.setPos(-7);
+				if (sf::Keyboard::isKeyPressed(sf::Keyboard::Q))
+					bullets.push_back(Bullet(t2.getI(), t2.getJ(), t2.getAngle(), t2.getId()));
 			}
-		}
-		else {
+			t1.draw(); t2.draw();
+			for (int i = 0; i < bullets.size(); i++) {
+				try { bullets.at(i).draw(); }
+				catch (exception) { bullets.erase(bullets.begin() + i, bullets.begin() + i + 1); }
+			}
+			checkConditions();
+			break;
+		case 2:
+			endMessage.setPosition(130, 70);
 			window.draw(endMessage);
 			while (window.pollEvent(event)) {
 				if (event.type == sf::Event::KeyPressed || event.type == sf::Event::Closed)
 					window.close();
 			}
+			break;
 		}
 		window.display();
 	}
-	
 }
